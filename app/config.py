@@ -9,9 +9,8 @@ class Settings(BaseSettings):
     facebook_verify_token: str = "my_verify_token_123"
     facebook_app_secret: str = ""
 
-    # OpenAI
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4"
+    # AI Provider - Google Gemini (FREE)
+    gemini_api_key: str = ""
 
     # Google Sheets
     google_sheets_credentials_file: str = "credentials.json"
