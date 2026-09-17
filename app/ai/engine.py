@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 from loguru import logger
 from typing import List, Dict, Optional
 
@@ -8,8 +8,8 @@ from app.ai.prompts import SalesPrompts
 
 class AIEngine:
     def __init__(self):
-        genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.model = 'gemini-2.0-flash'
         self.prompts = SalesPrompts()
 
     async def generate_response(
@@ -36,7 +36,10 @@ Customer: {user_message}
 Assistant:"""
 
         try:
-            response = self.model.generate_content(full_prompt)
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=full_prompt
+            )
             return response.text
 
         except Exception as e:
@@ -46,7 +49,10 @@ Assistant:"""
     async def detect_language(self, text: str) -> str:
         try:
             prompt = f"Detect the language of this text. Reply with just the ISO 639-1 language code (e.g., 'en', 'es', 'fr'). Text: {text}"
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt
+            )
             return response.text.strip().lower()[:2]
 
         except Exception as e:
@@ -63,7 +69,10 @@ Assistant:"""
 
 Message: {text}"""
             
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt
+            )
             
             import json
             import re
