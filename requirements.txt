@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 httpx
-google-genai
 python-dotenv
 gspread
 google-auth
