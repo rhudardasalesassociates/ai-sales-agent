@@ -9,7 +9,7 @@ from app.ai.prompts import SalesPrompts
 class AIEngine:
     def __init__(self):
         genai.configure(api_key=settings.gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-1.0-pro')
         self.prompts = SalesPrompts()
 
     async def generate_response(
