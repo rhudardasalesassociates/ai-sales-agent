@@ -1,4 +1,4 @@
-from google import genai
+import httpx
 from loguru import logger
 from typing import List, Dict, Optional
 
@@ -8,8 +8,9 @@ from app.ai.prompts import SalesPrompts
 
 class AIEngine:
     def __init__(self):
-        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.api_key = settings.gemini_api_key
         self.model = 'gemini-2.0-flash'
+        self.base_url = 'https://generativelanguage.googleapis.com/v1beta'
         self.prompts = SalesPrompts()
 
     async def generate_response(
@@ -36,11 +37,22 @@ Customer: {user_message}
 Assistant:"""
 
         try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=full_prompt
-            )
-            return response.text
+            url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+            payload = {
+                "contents": [{
+                    "parts": [{"text": full_prompt}]
+                }]
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, timeout=30.0)
+                data = response.json()
+                
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    logger.error(f"Gemini API error: {data}")
+                    return self.prompts.get_fallback_response(language)
 
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
@@ -49,11 +61,21 @@ Assistant:"""
     async def detect_language(self, text: str) -> str:
         try:
             prompt = f"Detect the language of this text. Reply with just the ISO 639-1 language code (e.g., 'en', 'es', 'fr'). Text: {text}"
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt
-            )
-            return response.text.strip().lower()[:2]
+            
+            url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, timeout=10.0)
+                data = response.json()
+                
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    return data["candidates"][0]["content"]["parts"][0]["text"].strip().lower()[:2]
+            return "en"
 
         except Exception as e:
             logger.error(f"Language detection error: {e}")
@@ -69,16 +91,25 @@ Assistant:"""
 
 Message: {text}"""
             
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt
-            )
+            url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
             
-            import json
-            import re
-            json_match = re.search(r'\{[^}]+\}', response.text)
-            if json_match:
-                return json.loads(json_match.group())
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, timeout=10.0)
+                data = response.json()
+                
+                if "candidates" in data and len(data["candidates"]) > 0:
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    import json
+                    import re
+                    json_match = re.search(r'\{[^}]+\}', text)
+                    if json_match:
+                        return json.loads(json_match.group())
+            
             return {"intent": "browsing", "sentiment": "neutral", "urgency": "medium", "topics": []}
 
         except Exception as e:
